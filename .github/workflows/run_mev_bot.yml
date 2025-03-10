@@ -21,13 +21,7 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install web3 numpy scikit-learn requests pandas
-    - name: Install Dependencies
-  run: |
-    pip install --upgrade pip
-    pip install -r requirements.txt
-    pip install web3  # ✅ Ensure latest Web3 v6+ is installed
-
-
+    
       - name: Run MEV Bot
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
