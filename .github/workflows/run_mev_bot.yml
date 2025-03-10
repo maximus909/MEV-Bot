@@ -21,6 +21,9 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install requests numpy tensorflow pandas web3 gym telegram
+      
+      - name: Check Working Directory
+        run: pwd && ls -la
 
       - name: Run MEV Bot
         env:
