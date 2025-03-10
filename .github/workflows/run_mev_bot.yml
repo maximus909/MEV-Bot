@@ -31,5 +31,7 @@ jobs:
           SOL_RPC: ${{ secrets.SOL_RPC }}
           ARBITRUM_RPC: ${{ secrets.ARBITRUM_RPC }}
         run: |
-        
+              - name: Show Latest Alerts
+        run: tail -n 10 alerts.txt || echo "No alerts found."
+
 
