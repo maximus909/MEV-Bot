@@ -6,6 +6,7 @@ import pandas as pd
 from web3 import Web3
 from sklearn.ensemble import RandomForestClassifier
 import logging
+import sys
 
 # ✅ Setup Logging & Alerts
 logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -13,8 +14,10 @@ logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctim
 def send_alert(message):
     with open("alerts.txt", "a") as f:
         f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
+    with open("mev_debug.log", "a") as f:
+        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
     logging.info(message)
-    print(message)  # Also prints to GitHub Actions logs
+    print(message, flush=True)  # Force output to GitHub Actions logs
 
 # ✅ Load Environment Variables
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
@@ -25,6 +28,11 @@ RPC_URLS = {
     "SOL": os.getenv("SOL_RPC"),
     "ARBITRUM": os.getenv("ARBITRUM_RPC"),
 }
+
+# ✅ Check If Private Key Exists (Prevents Empty Transactions)
+if not PRIVATE_KEY:
+    send_alert("❌ CRITICAL ERROR: PRIVATE_KEY is missing!")
+    sys.exit(1)
 
 # ✅ Initialize Web3 Connections
 w3 = {}
@@ -41,10 +49,10 @@ for chain, rpc in RPC_URLS.items():
             send_alert(f"❌ Error connecting to {chain} RPC: {e}")
             del w3[chain]
 
-# ✅ Bot Startup Notification
+# ✅ Ensure at least one blockchain is connected
 if not w3:
-    send_alert("❌ No working RPC connections. Exiting bot.")
-    exit(1)
+    send_alert("❌ CRITICAL ERROR: No working RPC connections. Exiting bot.")
+    sys.exit(1)
 else:
     send_alert("🚀 MEV Bot started successfully!")
 
@@ -57,7 +65,7 @@ try:
     send_alert("✅ AI Model Loaded Successfully")
 except Exception as e:
     send_alert(f"❌ AI Model Initialization Failed: {e}")
-    exit(1)
+    sys.exit(1)
 
 # ✅ Fetch Mempool Transactions
 def fetch_mempool_data(chain):
@@ -112,6 +120,7 @@ def start_trading():
                 for tx in transactions:
                     if predict_trade(tx):
                         execute_trade(chain, tx)
+        send_alert("🔄 Bot completed a cycle, sleeping for 5 minutes.")
         time.sleep(300)
 
 if __name__ == "__main__":
@@ -119,4 +128,4 @@ if __name__ == "__main__":
         start_trading()
     except Exception as e:
         send_alert(f"❌ CRITICAL ERROR: {e}")
-        exit(1)  # Stops bot if there’s a fatal error
+        sys.exit(1)  # Stops bot if there’s a fatal error
