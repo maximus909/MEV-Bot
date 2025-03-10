@@ -1,10 +1,6 @@
 import json
 import requests
 import numpy as np
-import tensorflow as tf
-import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Hide all warnings
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Force CPU only
 from web3 import Web3
 import os
 import logging
@@ -12,9 +8,6 @@ import pandas as pd
 import time
 import random
 import sys
-
-# ✅ Force TensorFlow to ignore GPU & CUDA warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  
 
 # ✅ Setup logging
 logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -38,7 +31,7 @@ RPC_URLS = {
     "OPTIMISM": OPTIMISM_RPC
 }
 
-# ✅ Initialize Web3 connections, skipping any that fail
+# ✅ Initialize Web3 connections (Skip RPCs that fail)
 w3 = {}
 for chain, url in RPC_URLS.items():
     try:
@@ -49,26 +42,7 @@ for chain, url in RPC_URLS.items():
     except Exception as e:
         logging.warning(f"Error connecting to {chain}: {e}")
 
-# ✅ AI Neural Network for MEV Prediction
-def build_advanced_neural_network():
-    model = tf.keras.Sequential([
-        tf.keras.layers.Dense(1024, activation='relu', input_shape=(15,)),
-        tf.keras.layers.Dense(512, activation='relu'),
-        tf.keras.layers.Dense(256, activation='relu'),
-        tf.keras.layers.Dense(128, activation='relu'),
-        tf.keras.layers.Dense(64, activation='relu'),
-        tf.keras.layers.Dense(1, activation='sigmoid')
-    ])
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-    return model
-
-# ✅ Load trained AI model (or create a new one)
-if os.path.exists("mev_model.h5"):
-    model = tf.keras.models.load_model("mev_model.h5")
-else:
-    model = build_advanced_neural_network()
-
-# ✅ Function to collect and analyze mempool data (Skips failed RPCs)
+# ✅ Function to collect mempool data (Skip failed RPCs)
 def fetch_mempool_data(chain):
     if chain not in w3:
         logging.warning(f"Skipping {chain}, RPC is not available.")
@@ -84,7 +58,7 @@ def fetch_mempool_data(chain):
                     tx['value'], tx['gasPrice'], tx['gas'],
                     tx.get('maxFeePerGas', 0),
                     tx.get('maxPriorityFeePerGas', 0)
-                ] + [0] * 10)  # Padding for AI input size
+                ] + [0] * 10)  # Padding for input size
             except:
                 continue
         df = pd.DataFrame(data, columns=['Value', 'GasPrice', 'Gas', 'MaxFeePerGas', 'MaxPriorityFeePerGas'] + [f'Feature_{i}' for i in range(10)])
@@ -93,22 +67,25 @@ def fetch_mempool_data(chain):
     except Exception as e:
         logging.error(f"Error fetching mempool data for {chain}: {e}")
 
-# ✅ Function to execute profitable MEV trades
+# ✅ Function to execute MEV trades using simple rules
 def execute_profitable_trade(chain, transaction):
     if chain not in w3:
         logging.warning(f"Skipping {chain}, RPC is not available.")
         return
 
-    prediction = model.predict(np.array([transaction]))[0][0]
-    if prediction > 0.95:
-        logging.info(f"Executing trade on {chain} with predicted success rate: {prediction}")
+    value = transaction[0]  # ETH/BSC/SOL value
+    gas_price = transaction[1]  # Gas price in Wei
+
+    # ✅ Trade if transaction value is high & gas is low
+    if value > 10**18 and gas_price < 50 * 10**9:  # Adjust as needed
+        logging.info(f"Executing trade on {chain}: Value={value}, GasPrice={gas_price}")
         tx_hash = send_transaction(chain, transaction)
         if tx_hash:
             logging.info(f"✅ Trade Successful on {chain}: {tx_hash}")
         else:
             logging.warning(f"❌ Trade Failed on {chain}")
     else:
-        logging.info(f"Skipping trade on {chain}, low probability: {prediction}")
+        logging.info(f"Skipping trade on {chain}, not profitable.")
 
 # ✅ Function to send transactions using Private RPCs
 def send_transaction(chain, tx_data):
@@ -148,7 +125,8 @@ def start_trading():
             time.sleep(random.uniform(300, 600))  # Wait between 5-10 minutes
         except Exception as e:
             logging.error(f"Critical error: {e}")
-            sys.exit(1)  # Restart the bot if it crashes
+            logging.info("Continuing bot execution despite the error...")
+            time.sleep(5)  # Short pause before retrying
 
 if __name__ == "__main__":
     logging.info("🚀 MEV Bot Started!")
