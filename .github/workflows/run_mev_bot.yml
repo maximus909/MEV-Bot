@@ -30,10 +30,6 @@ jobs:
           AVAX_RPC: ${{ secrets.AVAX_RPC }}
           SOL_RPC: ${{ secrets.SOL_RPC }}
           ARBITRUM_RPC: ${{ secrets.ARBITRUM_RPC }}
-        run: python mev_bot.py
-      - name: Email Notifications
-        if: always()
         run: |
-          if grep -q "Trade Executed" alerts.txt; then
-            echo "Trade executed successfully!" | mail -s "MEV Bot Alert" erebusxx2@gmail.com
-          fi
+        
+
