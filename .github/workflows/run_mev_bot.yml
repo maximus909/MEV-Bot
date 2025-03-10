@@ -33,7 +33,6 @@ jobs:
           AVAX_RPC: ${{ secrets.AVAX_RPC }}
           SOL_RPC: ${{ secrets.SOL_RPC }}
           ARBITRUM_RPC: ${{ secrets.ARBITRUM_RPC }}
-          OPTIMISM_RPC: ${{ secrets.OPTIMISM_RPC }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
