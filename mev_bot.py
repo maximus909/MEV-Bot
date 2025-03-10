@@ -3,7 +3,7 @@ import json
 import time
 import numpy as np
 from web3 import Web3
-from web3.middleware import geth_poa_middleware  # ✅ Correct import for Web3 v6+
+from web3.middleware import geth_poa_middleware  # ✅ Correct for Web3 v6+
 from sklearn.ensemble import RandomForestClassifier
 import logging
 import sys
