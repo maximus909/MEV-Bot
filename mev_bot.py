@@ -4,6 +4,7 @@ import time
 import numpy as np
 import pandas as pd
 from web3 import Web3
+from web3.middleware import geth_poa_middleware  # ✅ Fix for BSC PoA
 from sklearn.ensemble import RandomForestClassifier
 import logging
 
@@ -33,7 +34,7 @@ wallet_address = Web3.to_checksum_address(Web3().eth.account.from_key(PRIVATE_KE
 send_alert(f"🔍 MEV Bot is using Wallet: {wallet_address}")
 print(f"🔍 MEV Bot is using Wallet: {wallet_address}")
 
-# ✅ Initialize Web3 Connections
+# ✅ Initialize Web3 Connections with BSC PoA Fix
 w3 = {}
 for chain, rpc in RPC_URLS.items():
     if rpc:
@@ -41,6 +42,12 @@ for chain, rpc in RPC_URLS.items():
             w3[chain] = Web3(Web3.HTTPProvider(rpc))
             if w3[chain].is_connected():
                 send_alert(f"✅ {chain} RPC connected successfully.")
+                
+                # ✅ Fix for BSC PoA error
+                if chain == "BSC":
+                    w3[chain].middleware_onion.inject(geth_poa_middleware, layer=0)
+                    send_alert("✅ BSC PoA Middleware Applied Successfully.")
+
             else:
                 send_alert(f"⚠️ {chain} RPC failed to connect.")
                 del w3[chain]
@@ -112,11 +119,11 @@ def execute_trade(chain, transaction):
         return
 
     try:
-        value, gas_price, gas, max_fee, max_priority = transaction.tolist()  # ✅ Convert array to list
+        value, gas_price, gas, max_fee, max_priority = transaction.tolist()
 
         gas_limit = 210000
         gas_fee_eth = (gas_price * gas_limit) / 10**18
-        min_profit = value * 0.002  # Ensure at least 0.2% profit
+        min_profit = value * 0.002
 
         if min_profit > gas_fee_eth:
             nonce = w3[chain].eth.get_transaction_count(wallet_address)
@@ -162,4 +169,4 @@ if __name__ == "__main__":
         start_trading()
     except Exception as e:
         send_alert(f"❌ CRITICAL ERROR: {e}")
-        exit(1)  # Stops bot if there’s a fatal error
+        exit(1)
