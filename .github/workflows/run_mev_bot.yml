@@ -3,12 +3,12 @@ name: Run MEV Bot
 on:
   schedule:
     - cron: '*/10 * * * *'  # Runs every 10 minutes
-  workflow_dispatch:
+  workflow_dispatch:  # Allows manual execution
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -16,14 +16,11 @@ jobs:
       - name: Set Up Python
         uses: actions/setup-python@v3
         with:
-          python-version: '3.8'
+          python-version: '3.9'
 
       - name: Install Dependencies
         run: |
-          pip install requests numpy tensorflow pandas web3 gym telegram
-      
-      - name: Check Working Directory
-        run: pwd && ls -la
+          pip install web3 numpy scikit-learn requests pandas
 
       - name: Run MEV Bot
         env:
@@ -33,10 +30,10 @@ jobs:
           AVAX_RPC: ${{ secrets.AVAX_RPC }}
           SOL_RPC: ${{ secrets.SOL_RPC }}
           ARBITRUM_RPC: ${{ secrets.ARBITRUM_RPC }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python mev_bot.py
+      - name: Email Notifications
+        if: always()
         run: |
-          while true; do
-            python mev_bot.py || true
-            sleep 600
-          done
+          if grep -q "Trade Executed" alerts.txt; then
+            echo "Trade executed successfully!" | mail -s "MEV Bot Alert" erebusxx2@gmail.com
+          fi
