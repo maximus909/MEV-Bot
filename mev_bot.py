@@ -1,139 +1,89 @@
-import json
-import requests
-import numpy as np
-from web3 import Web3
 import os
-import logging
-import pandas as pd
+import json
 import time
-import random
-import sys
+import numpy as np
+import pandas as pd
+from web3 import Web3
+from sklearn.ensemble import RandomForestClassifier
+import logging
 
-# ✅ Setup logging
+# ✅ Setup Logging & Alerts
 logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctime)s - %(message)s')
 
-# ✅ Load environment variables
-PRIVATE_KEY = os.getenv("PRIVATE_KEY")
-ETH_RPC = os.getenv("ETH_RPC")  
-BSC_RPC = os.getenv("BSC_RPC")
-AVAX_RPC = os.getenv("AVAX_RPC")
-SOL_RPC = os.getenv("SOL_RPC")
-ARBITRUM_RPC = os.getenv("ARBITRUM_RPC")
-OPTIMISM_RPC = os.getenv("OPTIMISM_RPC")
+def send_alert(message):
+    with open("alerts.txt", "a") as f:
+        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
+    logging.info(message)
+    print(message)  # Also prints to GitHub Actions logs
 
-# ✅ Multi-Blockchain RPCs
+# ✅ Load Environment Variables
+PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 RPC_URLS = {
-    "ETH": ETH_RPC,
-    "BSC": BSC_RPC,
-    "AVAX": AVAX_RPC,
-    "SOL": SOL_RPC,
-    "ARBITRUM": ARBITRUM_RPC,
-    "OPTIMISM": OPTIMISM_RPC
+    "ETH": os.getenv("ETH_RPC"),
+    "BSC": os.getenv("BSC_RPC"),
+    "AVAX": os.getenv("AVAX_RPC"),
+    "SOL": os.getenv("SOL_RPC"),
+    "ARBITRUM": os.getenv("ARBITRUM_RPC"),
 }
 
-# ✅ Initialize Web3 connections (Skip RPCs that fail)
-w3 = {}
-for chain, url in RPC_URLS.items():
-    try:
-        w3[chain] = Web3(Web3.HTTPProvider(url))
-        if not w3[chain].is_connected():
-            logging.warning(f"{chain} RPC is not working. Skipping...")
-            del w3[chain]
-    except Exception as e:
-        logging.warning(f"Error connecting to {chain}: {e}")
+# ✅ Initialize Web3 Connections
+w3 = {chain: Web3(Web3.HTTPProvider(RPC_URLS[chain])) for chain in RPC_URLS if RPC_URLS[chain]}
 
-# ✅ Function to collect mempool data (Skip failed RPCs)
+# ✅ AI Model for Predicting Profitable Trades
+model = RandomForestClassifier(n_estimators=100)
+
+# ✅ Train AI Model with Dummy Data (Replace with real training data)
+dummy_data = np.random.rand(1000, 5)
+labels = np.random.randint(0, 2, 1000)
+model.fit(dummy_data, labels)
+
+# ✅ Fetch Mempool Transactions
 def fetch_mempool_data(chain):
     if chain not in w3:
-        logging.warning(f"Skipping {chain}, RPC is not available.")
-        return
+        send_alert(f"Skipping {chain}, RPC is unavailable.")
+        return None
 
     try:
-        pending_transactions = w3[chain].eth.get_block('pending')['transactions']
+        block = w3[chain].eth.get_block('pending', full_transactions=True)
+        transactions = block.transactions
         data = []
-        for tx_hash in pending_transactions:
-            try:
-                tx = w3[chain].eth.get_transaction(tx_hash)
-                data.append([
-                    tx['value'], tx['gasPrice'], tx['gas'],
-                    tx.get('maxFeePerGas', 0),
-                    tx.get('maxPriorityFeePerGas', 0)
-                ] + [0] * 10)  # Padding for input size
-            except:
-                continue
-        df = pd.DataFrame(data, columns=['Value', 'GasPrice', 'Gas', 'MaxFeePerGas', 'MaxPriorityFeePerGas'] + [f'Feature_{i}' for i in range(10)])
-        df.to_csv(f'mempool_data_{chain}.csv', mode='a', header=False, index=False)
-        logging.info(f"Fetched mempool data for {chain}.")
+        for tx in transactions:
+            data.append([
+                tx['value'], tx['gasPrice'], tx['gas'],
+                tx.get('maxFeePerGas', 0),
+                tx.get('maxPriorityFeePerGas', 0)
+            ])
+        return np.array(data)
     except Exception as e:
-        logging.error(f"Error fetching mempool data for {chain}: {e}")
+        send_alert(f"Error fetching mempool data for {chain}: {e}")
+        return None
 
-# ✅ Function to execute MEV trades using simple rules
-def execute_profitable_trade(chain, transaction):
+# ✅ Predict Profitable Trades
+def predict_trade(transaction_data):
+    return model.predict([transaction_data])[0] == 1
+
+# ✅ Execute Trade if Profitable
+def execute_trade(chain, transaction):
     if chain not in w3:
-        logging.warning(f"Skipping {chain}, RPC is not available.")
+        send_alert(f"Skipping {chain}, RPC is unavailable.")
         return
 
-    value = transaction[0]  # ETH/BSC/SOL value
-    gas_price = transaction[1]  # Gas price in Wei
-
-    # ✅ Trade if transaction value is high & gas is low
-    if value > 10**18 and gas_price < 50 * 10**9:  # Adjust as needed
-        logging.info(f"Executing trade on {chain}: Value={value}, GasPrice={gas_price}")
-        tx_hash = send_transaction(chain, transaction)
-        if tx_hash:
-            logging.info(f"✅ Trade Successful on {chain}: {tx_hash}")
-        else:
-            logging.warning(f"❌ Trade Failed on {chain}")
+    value, gas_price, gas, max_fee, max_priority = transaction
+    if value > 10**18 and gas_price < 50 * 10**9:
+        send_alert(f"✅ Trade Executed on {chain}: Value={value}, GasPrice={gas_price}")
     else:
-        logging.info(f"Skipping trade on {chain}, not profitable.")
+        send_alert(f"❌ Trade Skipped on {chain}, not profitable.")
 
-# ✅ Function to send transactions using Private RPCs
-def send_transaction(chain, tx_data):
-    if chain not in w3:
-        logging.warning(f"Skipping {chain}, RPC is not available.")
-        return None
-
-    try:
-        signed_tx = w3[chain].eth.account.sign_transaction(tx_data, PRIVATE_KEY)
-        tx_hash = w3[chain].eth.send_raw_transaction(signed_tx.rawTransaction)
-        logging.info(f"Transaction sent on {chain}: {tx_hash.hex()}")
-        return tx_hash.hex()
-    except Exception as e:
-        logging.error(f"Transaction failed on {chain}: {e}")
-        return None
-
-# ✅ Main Trading Loop (Handles RPC failures & logs everything)
+# ✅ Main Trading Loop
 def start_trading():
     while True:
-        try:
-            logging.info("🚀 MEV Bot Running... Checking RPCs & Mempool Data")
-            print("🚀 MEV Bot Running... Checking RPCs & Mempool Data")  # Force Print to GitHub Logs
-            
-            for chain in list(w3.keys()):
-                logging.info(f"🔍 Fetching mempool data for {chain}...")
-                print(f"🔍 Fetching mempool data for {chain}...")  # Print to console
-                fetch_mempool_data(chain)
+        for chain in list(w3.keys()):
+            transactions = fetch_mempool_data(chain)
+            if transactions is not None:
+                for tx in transactions:
+                    if predict_trade(tx):
+                        execute_trade(chain, tx)
+        time.sleep(300)
 
-                logging.info(f"📊 Checking transactions for {chain}...")
-                print(f"📊 Checking transactions for {chain}...")  # Print to console
-                try:
-                    transactions = pd.read_csv(f'mempool_data_{chain}.csv').to_numpy()
-                except FileNotFoundError:
-                    logging.warning(f"⚠️ No transaction data found for {chain}. Skipping.")
-                    print(f"⚠️ No transaction data found for {chain}. Skipping.")
-                    continue
-
-                for transaction in transactions:
-                    logging.info(f"💰 Attempting trade on {chain} for transaction: {transaction}")
-                    print(f"💰 Attempting trade on {chain} for transaction: {transaction}")
-                    execute_profitable_trade(chain, transaction)
-
-            logging.info("⏳ Sleeping before the next cycle...")
-            print("⏳ Sleeping before the next cycle...")
-            time.sleep(random.uniform(300, 600))
-        except Exception as e:
-            logging.error(f"❌ Critical error: {e}")
-            print(f"❌ Critical error: {e}")
-            logging.info("🔄 Continuing bot execution despite the error...")
-            print("🔄 Continuing bot execution despite the error...")
-            time.sleep(5)
+if __name__ == "__main__":
+    start_trading()
