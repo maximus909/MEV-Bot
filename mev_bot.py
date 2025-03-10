@@ -3,7 +3,7 @@ import json
 import time
 import numpy as np
 from web3 import Web3
-from web3.middleware.geth_poa import geth_poa_middleware  # ✅ Fixed import for Web3 v6+
+from web3.middleware import geth_poa_middleware  # ✅ Correct import for Web3 v6+
 from sklearn.ensemble import RandomForestClassifier
 import logging
 import sys
@@ -137,5 +137,5 @@ while True:
             for tx in transactions:
                 if predict_trade(tx):
                     execute_trade(chain, tx)
-    send_alert("🔄 Bot completed a cycle, sleeping for 5 minutes.")
-    time.sleep(300)
+    send_alert("🔄 Bot completed a cycle, sleeping for 10 minutes.")
+    time.sleep(600)
