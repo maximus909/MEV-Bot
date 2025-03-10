@@ -49,12 +49,15 @@ else:
     send_alert("🚀 MEV Bot started successfully!")
 
 # ✅ AI Model for Predicting Profitable Trades
-model = RandomForestClassifier(n_estimators=100)
-
-# ✅ Train AI Model with Dummy Data (Replace with real training data)
-dummy_data = np.random.rand(1000, 5)
-labels = np.random.randint(0, 2, 1000)
-model.fit(dummy_data, labels)
+try:
+    model = RandomForestClassifier(n_estimators=100)
+    dummy_data = np.random.rand(1000, 5)
+    labels = np.random.randint(0, 2, 1000)
+    model.fit(dummy_data, labels)
+    send_alert("✅ AI Model Loaded Successfully")
+except Exception as e:
+    send_alert(f"❌ AI Model Initialization Failed: {e}")
+    exit(1)
 
 # ✅ Fetch Mempool Transactions
 def fetch_mempool_data(chain):
@@ -79,7 +82,11 @@ def fetch_mempool_data(chain):
 
 # ✅ Predict Profitable Trades
 def predict_trade(transaction_data):
-    return model.predict([transaction_data])[0] == 1
+    try:
+        return model.predict([transaction_data])[0] == 1
+    except Exception as e:
+        send_alert(f"❌ AI Prediction Failed: {e}")
+        return False
 
 # ✅ Execute Trade if Profitable
 def execute_trade(chain, transaction):
@@ -87,11 +94,14 @@ def execute_trade(chain, transaction):
         send_alert(f"Skipping {chain}, RPC is unavailable.")
         return
 
-    value, gas_price, gas, max_fee, max_priority = transaction
-    if value > 10**18 and gas_price < 50 * 10**9:
-        send_alert(f"✅ Trade Executed on {chain}: Value={value}, GasPrice={gas_price}")
-    else:
-        send_alert(f"❌ Trade Skipped on {chain}, not profitable.")
+    try:
+        value, gas_price, gas, max_fee, max_priority = transaction
+        if value > 10**18 and gas_price < 50 * 10**9:
+            send_alert(f"✅ Trade Executed on {chain}: Value={value}, GasPrice={gas_price}")
+        else:
+            send_alert(f"❌ Trade Skipped on {chain}, not profitable.")
+    except Exception as e:
+        send_alert(f"❌ Trade Execution Failed: {e}")
 
 # ✅ Main Trading Loop
 def start_trading():
