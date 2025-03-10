@@ -31,7 +31,16 @@ jobs:
           SOL_RPC: ${{ secrets.SOL_RPC }}
           ARBITRUM_RPC: ${{ secrets.ARBITRUM_RPC }}
         run: |
-              - name: Show Latest Alerts
-        run: tail -n 10 alerts.txt || echo "No alerts found."
+          python mev_bot.py || echo "❌ MEV Bot crashed. Check alerts.txt for details."
+
+      - name: Show Latest Alerts
+        run: |
+          if [ -f alerts.txt ]; then
+            echo "📢 Showing last 10 alerts from alerts.txt:"
+            tail -n 10 alerts.txt
+          else
+            echo "⚠️ No alerts found. The bot may not have started correctly."
+          fi
+
 
 
