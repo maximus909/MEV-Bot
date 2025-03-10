@@ -2,6 +2,9 @@ import json
 import requests
 import numpy as np
 import tensorflow as tf
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Hide all warnings
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Force CPU only
 from web3 import Web3
 import os
 import logging
