@@ -106,28 +106,34 @@ def send_transaction(chain, tx_data):
 def start_trading():
     while True:
         try:
-            for chain in list(w3.keys()):  # Loop through available RPCs only
-                logging.info(f"Fetching mempool data for {chain}...")
+            logging.info("🚀 MEV Bot Running... Checking RPCs & Mempool Data")
+            print("🚀 MEV Bot Running... Checking RPCs & Mempool Data")  # Force Print to GitHub Logs
+            
+            for chain in list(w3.keys()):
+                logging.info(f"🔍 Fetching mempool data for {chain}...")
+                print(f"🔍 Fetching mempool data for {chain}...")  # Print to console
                 fetch_mempool_data(chain)
 
-                logging.info(f"Checking transactions for {chain}...")
+                logging.info(f"📊 Checking transactions for {chain}...")
+                print(f"📊 Checking transactions for {chain}...")  # Print to console
                 try:
                     transactions = pd.read_csv(f'mempool_data_{chain}.csv').to_numpy()
                 except FileNotFoundError:
-                    logging.warning(f"No transaction data found for {chain}. Skipping.")
+                    logging.warning(f"⚠️ No transaction data found for {chain}. Skipping.")
+                    print(f"⚠️ No transaction data found for {chain}. Skipping.")
                     continue
 
                 for transaction in transactions:
-                    logging.info(f"Attempting trade on {chain} for transaction: {transaction}")
+                    logging.info(f"💰 Attempting trade on {chain} for transaction: {transaction}")
+                    print(f"💰 Attempting trade on {chain} for transaction: {transaction}")
                     execute_profitable_trade(chain, transaction)
 
-            logging.info("Sleeping before the next cycle...")
-            time.sleep(random.uniform(300, 600))  # Wait between 5-10 minutes
+            logging.info("⏳ Sleeping before the next cycle...")
+            print("⏳ Sleeping before the next cycle...")
+            time.sleep(random.uniform(300, 600))
         except Exception as e:
-            logging.error(f"Critical error: {e}")
-            logging.info("Continuing bot execution despite the error...")
-            time.sleep(5)  # Short pause before retrying
-
-if __name__ == "__main__":
-    logging.info("🚀 MEV Bot Started!")
-    start_trading()
+            logging.error(f"❌ Critical error: {e}")
+            print(f"❌ Critical error: {e}")
+            logging.info("🔄 Continuing bot execution despite the error...")
+            print("🔄 Continuing bot execution despite the error...")
+            time.sleep(5)
