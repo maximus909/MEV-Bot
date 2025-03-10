@@ -9,7 +9,6 @@ import time
 import random
 import sys
 
-[![Run MEV Bot](https://github.com/maximus909/MEV-Bot/actions/workflows/run_mev_bot.yml/badge.svg)](https://github.com/maximus909/MEV-Bot/actions/workflows/run_mev_bot.yml)
 # ✅ Setup logging
 logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctime)s - %(message)s')
 
