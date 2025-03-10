@@ -1,4 +1,4 @@
-]name: Run MEV Bot
+name: Run MEV Bot
 
 on:
   schedule:
@@ -20,19 +20,17 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip uninstall -y web3 && pip install --no-cache-dir web3 numpy scikit-learn requests pandas python-dotenv
-          pip list  # ✅ Shows installed packages for debugging
+          pip install web3 numpy scikit-learn requests pandas
 
       - name: Run MEV Bot
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-          WALLET_ADDRESS: ${{ secrets.WALLET_ADDRESS }}
           ETH_RPC: ${{ secrets.ETH_RPC }}
           BSC_RPC: ${{ secrets.BSC_RPC }}
           AVAX_RPC: ${{ secrets.AVAX_RPC }}
           SOL_RPC: ${{ secrets.SOL_RPC }}
           ARBITRUM_RPC: ${{ secrets.ARBITRUM_RPC }}
+          WALLET_ADDRESS: ${{ secrets.WALLET_ADDRESS }}
         run: |
           set -o pipefail
           python mev_bot.py 2>&1 | tee mev_debug.log || echo "❌ MEV Bot crashed. Check mev_debug.log for details."
@@ -55,8 +53,3 @@ jobs:
             echo "⚠️ No alerts found. The bot may not have started correctly."
           fi
 
-      - name: Upload Debug Logs (Artifacts)
-        uses: actions/upload-artifact@v3
-        with:
-          name: mev-debug-log
-          path: mev_debug.log
