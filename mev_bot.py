@@ -2,7 +2,6 @@ import os
 import json
 import time
 import numpy as np
-import pandas as pd
 from web3 import Web3
 from sklearn.ensemble import RandomForestClassifier
 import logging
@@ -21,6 +20,7 @@ def send_alert(message):
 
 # ✅ Load Environment Variables
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
+WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
 RPC_URLS = {
     "ETH": os.getenv("ETH_RPC"),
     "BSC": os.getenv("BSC_RPC"),
@@ -29,10 +29,17 @@ RPC_URLS = {
     "ARBITRUM": os.getenv("ARBITRUM_RPC"),
 }
 
-# ✅ Check If Private Key Exists (Prevents Empty Transactions)
+# ✅ Check If Private Key and Wallet Address Exist (Prevents Empty Transactions)
 if not PRIVATE_KEY:
     send_alert("❌ CRITICAL ERROR: PRIVATE_KEY is missing!")
     sys.exit(1)
+
+if not WALLET_ADDRESS:
+    send_alert("❌ CRITICAL ERROR: WALLET_ADDRESS is missing!")
+    sys.exit(1)
+
+# ✅ Ensure Wallet Address is Properly Formatted
+wallet_address = Web3.to_checksum_address(WALLET_ADDRESS)
 
 # ✅ Initialize Web3 Connections
 w3 = {}
@@ -88,16 +95,26 @@ def fetch_mempool_data(chain):
         send_alert(f"Error fetching mempool data for {chain}: {e}")
         return None
 
-# ✅ Predict Profitable Trades
+# ✅ Predict Profitable Trades with a Deceptive Strategy (Front-Running, Sandwich Attacks)
 def predict_trade(transaction_data):
     try:
-        return model.predict([transaction_data])[0] == 1
+        # Predict whether a trade is profitable
+        is_profitable = model.predict([transaction_data])[0] == 1
+        
+        # If the trade is profitable, check for front-running or sandwich attack opportunities
+        if is_profitable:
+            send_alert("🔍 A potentially profitable trade detected, analyzing for deception opportunities.")
+            # Example: Detecting large transactions as potential bot trades
+            if transaction_data[0] > 10**18:  # Example: large transactions (>1 ETH)
+                send_alert("⚠️ Large transaction detected, possible bot trade. Planning front-run or sandwich.")
+                # Add front-run or sandwich logic here
+                return True  # Deceptive trade is confirmed
+        return is_profitable  # Normal trade prediction
     except Exception as e:
         send_alert(f"❌ AI Prediction Failed: {e}")
         return False
 
-# ✅ Execute Trade if Profitable
-# ✅ Execute Trade if Profitable & Send Real Transactions
+# ✅ Execute Trade with Deception Strategies (e.g., Front-Running, Sandwich Attacks)
 def execute_trade(chain, transaction):
     if chain not in w3:
         send_alert(f"Skipping {chain}, RPC is unavailable.")
@@ -115,10 +132,10 @@ def execute_trade(chain, transaction):
 
             # ✅ Create a real transaction
             tx = {
-                'to': 0x52611C01d987503ff0d909888b7ecba79720eBa0,
+                'to': '0x52611C01d987503ff0d909888b7ecba79720eBa0',  # Your target address
                 'value': int(value),
                 'gas': gas_limit,
-                'gasPrice': int(gas_price),
+                'gasPrice': int(gas_price * 1.1),  # Increase gas to front-run other bots
                 'nonce': nonce,
                 'chainId': w3[chain].eth.chain_id
             }
@@ -127,7 +144,7 @@ def execute_trade(chain, transaction):
             signed_tx = w3[chain].eth.account.sign_transaction(tx, PRIVATE_KEY)
             tx_hash = w3[chain].eth.send_raw_transaction(signed_tx.rawTransaction)
 
-            send_alert(f"✅ Trade Executed on {chain}: TX Hash={tx_hash.hex()}, Profit={min_profit} ETH")
+            send_alert(f"✅ Deceptive Trade Executed on {chain}: TX Hash={tx_hash.hex()}, Profit={min_profit} ETH")
 
             # ✅ Save TX Hash for tracking
             with open("executed_trades.txt", "a") as f:
@@ -136,7 +153,6 @@ def execute_trade(chain, transaction):
             send_alert(f"❌ Trade Skipped on {chain}, Not Profitable Enough (Profit={min_profit} ETH, Gas Fee={gas_fee_eth} ETH)")
     except Exception as e:
         send_alert(f"❌ Trade Execution Failed: {e}")
-
 
 # ✅ Main Trading Loop
 def start_trading():
