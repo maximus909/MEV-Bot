@@ -4,7 +4,9 @@ import time
 import numpy as np
 import pandas as pd
 from web3 import Web3
-from web3.middleware import geth_poa_middleware  # ✅ Fix for BSC PoA
+# ✅ Correct way to import PoA Middleware
+from web3.middleware.geth_poa import geth_poa_middleware
+  # ✅ Fix for BSC PoA
 from sklearn.ensemble import RandomForestClassifier
 import logging
 
