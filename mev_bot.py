@@ -27,7 +27,26 @@ RPC_URLS = {
 }
 
 # ✅ Initialize Web3 Connections
-w3 = {chain: Web3(Web3.HTTPProvider(RPC_URLS[chain])) for chain in RPC_URLS if RPC_URLS[chain]}
+w3 = {}
+for chain, rpc in RPC_URLS.items():
+    if rpc:
+        try:
+            w3[chain] = Web3(Web3.HTTPProvider(rpc))
+            if w3[chain].is_connected():
+                send_alert(f"✅ {chain} RPC connected successfully.")
+            else:
+                send_alert(f"⚠️ {chain} RPC failed to connect.")
+                del w3[chain]
+        except Exception as e:
+            send_alert(f"❌ Error connecting to {chain} RPC: {e}")
+            del w3[chain]
+
+# ✅ Bot Startup Notification
+if not w3:
+    send_alert("❌ No working RPC connections. Exiting bot.")
+    exit(1)
+else:
+    send_alert("🚀 MEV Bot started successfully!")
 
 # ✅ AI Model for Predicting Profitable Trades
 model = RandomForestClassifier(n_estimators=100)
@@ -86,4 +105,8 @@ def start_trading():
         time.sleep(300)
 
 if __name__ == "__main__":
-    start_trading()
+    try:
+        start_trading()
+    except Exception as e:
+        send_alert(f"❌ CRITICAL ERROR: {e}")
+        exit(1)  # Stops bot if there’s a fatal error
