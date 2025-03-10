@@ -9,7 +9,6 @@ import pandas as pd
 import time
 import random
 import sys
-from telegram import Bot
 
 # Setup logging
 logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -22,17 +21,6 @@ AVAX_RPC = os.getenv("AVAX_RPC")
 SOL_RPC = os.getenv("SOL_RPC")
 ARBITRUM_RPC = os.getenv("ARBITRUM_RPC")
 OPTIMISM_RPC = os.getenv("OPTIMISM_RPC")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-
-# Initialize Telegram Bot
-bot = Bot(token=TELEGRAM_BOT_TOKEN)
-
-def send_telegram_alert(message):
-    try:
-        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
-    except Exception as e:
-        logging.error(f"Error sending Telegram alert: {e}")
 
 # Multi-Blockchain RPCs
 RPC_URLS = {
@@ -89,7 +77,6 @@ def fetch_mempool_data(chain):
 def execute_profitable_trade(chain, transaction):
     if model.predict(np.array([transaction]))[0][0] > 0.95:
         send_transaction(transaction)
-        send_telegram_alert(f"Executed profitable trade on {chain}")
 
 # Function to send transactions using Private RPCs
 def send_transaction(tx_data):
@@ -111,11 +98,9 @@ def start_trading():
                 transactions = pd.read_csv(f'mempool_data_{chain}.csv').to_numpy()
                 for transaction in transactions:
                     execute_profitable_trade(chain, transaction)
-            send_telegram_alert("MEV Bot executed a cycle successfully!")
             time.sleep(random.uniform(300, 600))
         except Exception as e:
             logging.error(f"Critical error: {e}")
-            send_telegram_alert(f"MEV Bot encountered an error: {e}")
             sys.exit(1)
 
 if __name__ == "__main__":
