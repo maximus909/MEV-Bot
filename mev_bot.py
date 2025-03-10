@@ -13,6 +13,8 @@ logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctim
 def send_alert(message):
     with open("alerts.txt", "a") as f:
         f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
+    with open("mev_debug.log", "a") as f:
+        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
     logging.info(message)
     print(message)  # Also prints to GitHub Actions logs
 
