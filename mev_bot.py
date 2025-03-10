@@ -16,12 +16,16 @@ assert web3.is_connected(), "❌ ERROR: Cannot connect to Ethereum network."
 UNISWAP_ROUTER = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
 SUSHISWAP_ROUTER = "0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F"
 
-# ✅ Load Uniswap & Sushiswap contract ABIs
-with open("uniswap_abi.json") as f:
-    uniswap_abi = json.load(f)
-with open("sushiswap_abi.json") as f:
-    sushiswap_abi = json.load(f)
+# ✅ Load Uniswap & Sushiswap contract ABIs (Fixes the ABI loading issue)
+def load_abi(file_name):
+    with open(file_name) as f:
+        abi_data = json.load(f)
+        return abi_data["abi"] if "abi" in abi_data else abi_data  # ✅ Extract ABI correctly
 
+uniswap_abi = load_abi("uniswap_abi.json")
+sushiswap_abi = load_abi("sushiswap_abi.json")
+
+# ✅ Initialize Uniswap & Sushiswap Contracts
 uniswap = web3.eth.contract(address=UNISWAP_ROUTER, abi=uniswap_abi)
 sushiswap = web3.eth.contract(address=SUSHISWAP_ROUTER, abi=sushiswap_abi)
 
@@ -72,7 +76,7 @@ def find_arbitrage():
 def execute_flash_loan(token_in, token_out, amount):
     print(f"🚀 Executing Flash Loan for {amount / 10**18} ETH...")
 
-    flash_loan_contract = web3.eth.contract(address=CONTRACT_ADDRESS, abi="YOUR_CONTRACT_ABI")
+    flash_loan_contract = web3.eth.contract(address=CONTRACT_ADDRESS, abi=uniswap_abi)  # Use Uniswap ABI
 
     tx = flash_loan_contract.functions.startArbitrage(token_in, token_out, amount).build_transaction({
         "from": web3.eth.default_account,
