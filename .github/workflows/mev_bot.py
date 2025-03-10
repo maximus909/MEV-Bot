@@ -10,15 +10,13 @@ import time
 import random
 import sys
 import telegram
-from flashbots import Flashbots
-import asyncio
 
 # Setup logging
 logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctime)s - %(message)s')
 
-# Load environment variables (GitHub Actions support)
+# Load environment variables
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
-ETH_RPC = os.getenv("ETH_RPC")
+ETH_RPC = os.getenv("ETH_RPC")  # This is now your private RPC (e.g., MEV-Blocker)
 BSC_RPC = os.getenv("BSC_RPC")
 AVAX_RPC = os.getenv("AVAX_RPC")
 SOL_RPC = os.getenv("SOL_RPC")
@@ -47,7 +45,6 @@ RPC_URLS = {
 }
 
 w3 = {chain: Web3(Web3.HTTPProvider(RPC_URLS[chain])) for chain in RPC_URLS}
-flashbots = Flashbots(w3["ETH"], private_key=PRIVATE_KEY)
 
 # AI Neural Network for MEV Prediction
 def build_advanced_neural_network():
@@ -91,16 +88,18 @@ def fetch_mempool_data(chain):
 # Function to execute profitable MEV trades
 def execute_profitable_trade(chain, transaction):
     if model.predict(np.array([transaction]))[0][0] > 0.95:
-        send_flashbots_bundle([transaction])
+        send_transaction(transaction)
         send_telegram_alert(f"Executed profitable trade on {chain}")
 
-# Function to send Flashbots bundle
-def send_flashbots_bundle(transactions):
+# Function to send transactions using Private RPCs
+def send_transaction(tx_data):
     try:
-        bundle = flashbots.send_bundle(transactions, target_block_number=w3["ETH"].eth.block_number + 1)
-        return bundle
+        signed_tx = w3["ETH"].eth.account.sign_transaction(tx_data, PRIVATE_KEY)
+        tx_hash = w3["ETH"].eth.send_raw_transaction(signed_tx.rawTransaction)
+        logging.info(f"Transaction sent: {tx_hash.hex()}")
+        return tx_hash.hex()
     except Exception as e:
-        logging.error(f"Flashbots execution failed: {e}")
+        logging.error(f"Transaction failed: {e}")
         return None
 
 # Main Trading Loop
