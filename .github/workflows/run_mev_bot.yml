@@ -20,7 +20,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install requests numpy tensorflow pandas web3 flashbots gym telegram
+          pip install requests numpy tensorflow pandas web3 gym telegram
 
       - name: Run MEV Bot
         env:
