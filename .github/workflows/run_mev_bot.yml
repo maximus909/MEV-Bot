@@ -30,6 +30,7 @@ jobs:
           AVAX_RPC: ${{ secrets.AVAX_RPC }}
           SOL_RPC: ${{ secrets.SOL_RPC }}
           ARBITRUM_RPC: ${{ secrets.ARBITRUM_RPC }}
+          WALLET_ADDRESS: ${{ secrets.WALLET_ADDRESS }}
         run: |
           set -o pipefail
           python mev_bot.py 2>&1 | tee mev_debug.log || echo "❌ MEV Bot crashed. Check mev_debug.log for details."
