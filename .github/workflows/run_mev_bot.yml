@@ -20,17 +20,15 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          pip install web3 numpy scikit-learn requests pandas
+          python -m pip install --upgrade pip
+          pip uninstall -y web3 && pip install --no-cache-dir web3 numpy scikit-learn requests pandas python-dotenv
+          pip list  # ✅ Show installed packages for debugging
 
       - name: Run MEV Bot
         env:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           ETH_RPC: ${{ secrets.ETH_RPC }}
-          BSC_RPC: ${{ secrets.BSC_RPC }}
-          AVAX_RPC: ${{ secrets.AVAX_RPC }}
-          SOL_RPC: ${{ secrets.SOL_RPC }}
-          ARBITRUM_RPC: ${{ secrets.ARBITRUM_RPC }}
-          WALLET_ADDRESS: ${{ secrets.WALLET_ADDRESS }}
+          FLASH_LOAN_CONTRACT: ${{ secrets.FLASH_LOAN_CONTRACT }}
         run: |
           set -o pipefail
           python mev_bot.py 2>&1 | tee mev_debug.log || echo "❌ MEV Bot crashed. Check mev_debug.log for details."
@@ -43,13 +41,3 @@ jobs:
           else
             echo "⚠️ No debug log found. The bot may have crashed before logging."
           fi
-
-      - name: Show Latest Alerts
-        run: |
-          if [ -f alerts.txt ]; then
-            echo "📢 Showing last 10 alerts from alerts.txt:"
-            tail -n 10 alerts.txt
-          else
-            echo "⚠️ No alerts found. The bot may not have started correctly."
-          fi
-
