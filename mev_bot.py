@@ -137,17 +137,26 @@ def execute_trade(chain, transaction):
     except Exception as e:
         send_alert(f"❌ Trade Execution Failed: {e}")
 
-# ✅ Main Trading Loop
+# ✅ Continuous Trading with More Frequent Checks
 def start_trading():
     while True:
+        trade_count = 0  # Track how many trades were executed
+        
         for chain in list(w3.keys()):
             transactions = fetch_mempool_data(chain)
             if transactions is not None:
                 for tx in transactions:
                     if predict_trade(tx):
                         execute_trade(chain, tx)
-        send_alert("🔄 Bot completed a cycle, sleeping for 5 minutes.")
-        time.sleep(300)
+                        trade_count += 1
+
+        if trade_count == 0:
+            send_alert("🔄 No profitable trades found. Checking again in 30 seconds.")
+            time.sleep(30)  # Check again sooner
+        else:
+            send_alert(f"✅ {trade_count} profitable trades executed. Sleeping for 5 minutes.")
+            time.sleep(300)  # Normal sleep after successful trades
+
 
 if __name__ == "__main__":
     try:
