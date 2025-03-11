@@ -32,7 +32,7 @@ if not PRIVATE_KEY:
     send_alert("❌ CRITICAL ERROR: PRIVATE_KEY is missing!")
     sys.exit(1)
 
-# ✅ Initialize Web3 Connections without PoA Middleware
+# ✅ Initialize Web3 Connections
 w3 = {}
 for chain, rpc in RPC_URLS.items():
     if rpc:
@@ -94,7 +94,7 @@ def predict_trade(transaction_data):
         send_alert(f"❌ AI Prediction Failed: {e}")
         return False
 
-# ✅ Execute Trade if Profitable
+# ✅ Execute Trade & Show Full Transaction Details
 def execute_trade(chain, transaction):
     if chain not in w3:
         send_alert(f"Skipping {chain}, RPC is unavailable.")
@@ -102,15 +102,42 @@ def execute_trade(chain, transaction):
 
     try:
         value, gas_price, gas, max_fee, max_priority = transaction
-
         gas_limit = 210000
         gas_fee_eth = (gas_price * gas_limit) / 10**18
         min_profit = value * 0.002  # Ensure at least 0.2% profit
 
         if min_profit > gas_fee_eth:
-            send_alert(f"✅ Trade Executed on {chain}: Value={value}, GasPrice={gas_price}, Profit={min_profit} ETH")
+            # Build transaction
+            account = w3[chain].eth.account.from_key(PRIVATE_KEY)
+            nonce = w3[chain].eth.get_transaction_count(account.address)
+            
+            tx = {
+                "from": account.address,
+                "to": account.address,  # This should be the actual target address
+                "value": value,
+                "gas": gas_limit,
+                "gasPrice": gas_price,
+                "nonce": nonce,
+            }
+
+            # Sign and send transaction
+            signed_tx = w3[chain].eth.account.sign_transaction(tx, PRIVATE_KEY)
+            tx_hash = w3[chain].eth.send_raw_transaction(signed_tx.rawTransaction)
+
+            # Convert hash to readable format
+            tx_hash_hex = tx_hash.hex()
+            etherscan_link = f"https://etherscan.io/tx/{tx_hash_hex}"
+
+            # Show transaction details
+            send_alert(f"""
+            ✅ Trade Executed on {chain}:
+            🔹 Value: {value / 10**18:.6f} ETH
+            🔹 Gas Price: {gas_price / 10**9:.2f} Gwei
+            🔹 Transaction Hash: {tx_hash_hex}
+            🔹 🔗 [View on Etherscan]({etherscan_link})
+            """)
         else:
-            send_alert(f"❌ Trade Skipped on {chain}, Not Profitable Enough (Profit={min_profit} ETH, Gas Fee={gas_fee_eth} ETH)")
+            send_alert(f"❌ Trade Skipped on {chain}, Not Profitable Enough (Profit={min_profit:.6f} ETH, Gas Fee={gas_fee_eth:.6f} ETH)")
     except Exception as e:
         send_alert(f"❌ Trade Execution Failed: {e}")
 
