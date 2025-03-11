@@ -1,6 +1,4 @@
-# Creating a final clean version of the GitHub Actions YML file (removing mev_debug.log)
 
-final_yml = """\
 name: Run MEV Bot
 
 on:
