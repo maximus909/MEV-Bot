@@ -1,4 +1,3 @@
-
 import os
 import json
 import time
@@ -14,7 +13,7 @@ logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctim
 
 def send_alert(message):
     with open("alerts.txt", "a") as f:
-        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\\n")
+        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
     logging.info(message)
     print(message, flush=True)  # Force output to GitHub Actions logs
 
@@ -33,7 +32,7 @@ if not PRIVATE_KEY:
     send_alert("❌ CRITICAL ERROR: PRIVATE_KEY is missing!")
     sys.exit(1)
 
-# ✅ Initialize Web3 Connections with PoA Fix for BSC
+# ✅ Initialize Web3 Connections without PoA Middleware
 w3 = {}
 for chain, rpc in RPC_URLS.items():
     if rpc:
@@ -41,8 +40,6 @@ for chain, rpc in RPC_URLS.items():
             w3[chain] = Web3(Web3.HTTPProvider(rpc))
             if w3[chain].is_connected():
                 send_alert(f"✅ {chain} RPC connected successfully.")
-                if chain == "BSC":  # Apply PoA Middleware for BSC
-                    w3[chain].middleware_onion.inject(geth_poa_middleware, layer=0)
             else:
                 send_alert(f"⚠️ {chain} RPC failed to connect.")
                 del w3[chain]
