@@ -133,5 +133,3 @@ if __name__ == "__main__":
     except Exception as e:
         send_alert(f"❌ CRITICAL ERROR: {e}")
         sys.exit(1)  # Stops bot if there’s a fatal error
-"""
-
