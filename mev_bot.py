@@ -1,3 +1,6 @@
+# Updating mev_bot.py with the fixed execute_trade function
+
+fixed_code = """\
 import os
 import json
 import time
@@ -13,9 +16,9 @@ logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctim
 
 def send_alert(message):
     with open("alerts.txt", "a") as f:
-        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
+        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\\n")
     with open("mev_debug.log", "a") as f:
-        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\n")
+        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\\n")
     logging.info(message)
     print(message, flush=True)  # Force output to GitHub Actions logs
 
@@ -100,7 +103,7 @@ def predict_trade(transaction_data):
         send_alert(f"❌ AI Prediction Failed: {e}")
         return False
 
-# ✅ Execute Trade if Profitable
+# ✅ Execute Trade if Profitable (Fixed rawTransaction issue)
 def execute_trade(chain, transaction):
     if chain not in w3:
         send_alert(f"Skipping {chain}, RPC is unavailable.")
@@ -126,15 +129,15 @@ def execute_trade(chain, transaction):
                 'chainId': w3[chain].eth.chain_id
             }
 
-            # ✅ Sign & Send Transaction
+            # ✅ Sign & Send Transaction (Fixed: Use 'raw_transaction' instead of 'rawTransaction')
             signed_tx = w3[chain].eth.account.sign_transaction(tx, PRIVATE_KEY)
-            tx_hash = w3[chain].eth.send_raw_transaction(signed_tx.rawTransaction)
+            tx_hash = w3[chain].eth.send_raw_transaction(signed_tx.raw_transaction)
 
             send_alert(f"✅ Trade Executed on {chain}: TX Hash={tx_hash.hex()}, Profit={min_profit} ETH")
 
             # ✅ Save TX Hash for tracking
             with open("executed_trades.txt", "a") as f:
-                f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - TX: {tx_hash.hex()}\n")
+                f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - TX: {tx_hash.hex()}\\n")
         else:
             send_alert(f"❌ Trade Skipped on {chain}, Not Profitable Enough (Profit={min_profit} ETH, Gas Fee={gas_fee_eth} ETH)")
     except Exception as e:
@@ -158,3 +161,11 @@ if __name__ == "__main__":
     except Exception as e:
         send_alert(f"❌ CRITICAL ERROR: {e}")
         sys.exit(1)  # Stops bot if there’s a fatal error
+"""
+
+# Save the updated code to a new file
+file_path = "/mnt/data/mev_bot_fixed.py"
+with open(file_path, "w") as file:
+    file.write(fixed_code)
+
+file_path
