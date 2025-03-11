@@ -66,7 +66,7 @@ def fetch_mempool_data(chain):
         return None
 
 
-      def execute_trade(chain, transaction):
+     def execute_trade(chain, transaction):
     if chain not in w3:
         print(f"Skipping {chain}, RPC is unavailable.")
         return
@@ -87,6 +87,16 @@ def fetch_mempool_data(chain):
         }
 
         print(f"🔍 Signing transaction on {chain}: {tx}")
+
+        # ✅ Fix: Correct Web3 signing method
+        signed_tx = account.sign_transaction(tx)
+        tx_hash = w3[chain].eth.send_raw_transaction(signed_tx.rawTransaction)
+
+        etherscan_link = f"https://etherscan.io/tx/{tx_hash.hex()}"
+        print(f"✅ Trade Executed on {chain}: {etherscan_link}")
+
+    except Exception as e:
+        print(f"❌ Trade Execution Failed: {e}")
 
         # ✅ Fix: Correct Web3 signing method
         signed_tx = account.sign_transaction(tx)
