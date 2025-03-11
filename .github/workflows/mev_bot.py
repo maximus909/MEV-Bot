@@ -9,7 +9,6 @@ import pandas as pd
 import time
 import random
 import sys
-import telegram
 
 # Setup logging
 logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -21,18 +20,8 @@ BSC_RPC = os.getenv("BSC_RPC")
 AVAX_RPC = os.getenv("AVAX_RPC")
 SOL_RPC = os.getenv("SOL_RPC")
 ARBITRUM_RPC = os.getenv("ARBITRUM_RPC")
-OPTIMISM_RPC = os.getenv("OPTIMISM_RPC")
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+WALLET_ADDRESS = os.getenv("WALLET_ADDRESS")
 
-# Initialize Telegram Bot
-bot = telegram.Bot(token=TELEGRAM_BOT_TOKEN)
-
-def send_telegram_alert(message):
-    try:
-        bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=message)
-    except Exception as e:
-        logging.error(f"Error sending Telegram alert: {e}")
 
 # Multi-Blockchain RPCs
 RPC_URLS = {
@@ -41,7 +30,6 @@ RPC_URLS = {
     "AVAX": AVAX_RPC,
     "SOL": SOL_RPC,
     "ARBITRUM": ARBITRUM_RPC,
-    "OPTIMISM": OPTIMISM_RPC
 }
 
 w3 = {chain: Web3(Web3.HTTPProvider(RPC_URLS[chain])) for chain in RPC_URLS}
