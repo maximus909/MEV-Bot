@@ -163,9 +163,4 @@ if __name__ == "__main__":
         sys.exit(1)  # Stops bot if there’s a fatal error
 """
 
-# Save the updated code to a new file
-file_path = "/mnt/data/mev_bot_fixed.py"
-with open(file_path, "w") as file:
-    file.write(fixed_code)
 
-file_path
