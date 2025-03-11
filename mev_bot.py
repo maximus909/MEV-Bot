@@ -5,6 +5,7 @@ import time
 import numpy as np
 import pandas as pd
 from web3 import Web3
+from web3.middleware import geth_poa_middleware  # ✅ Fix for BSC PoA
 from sklearn.ensemble import RandomForestClassifier
 import logging
 import sys
@@ -33,7 +34,7 @@ if not PRIVATE_KEY:
     send_alert("❌ CRITICAL ERROR: PRIVATE_KEY is missing!")
     sys.exit(1)
 
-# ✅ Initialize Web3 Connections
+# ✅ Initialize Web3 Connections with PoA Fix for BSC
 w3 = {}
 for chain, rpc in RPC_URLS.items():
     if rpc:
@@ -41,6 +42,8 @@ for chain, rpc in RPC_URLS.items():
             w3[chain] = Web3(Web3.HTTPProvider(rpc))
             if w3[chain].is_connected():
                 send_alert(f"✅ {chain} RPC connected successfully.")
+                if chain == "BSC":  # Apply PoA Middleware for BSC
+                    w3[chain].middleware_onion.inject(geth_poa_middleware, layer=0)
             else:
                 send_alert(f"⚠️ {chain} RPC failed to connect.")
                 del w3[chain]
