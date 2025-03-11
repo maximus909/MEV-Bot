@@ -7,7 +7,9 @@ import os
 import logging
 
 # ✅ Logging Setup
-logging.basicConfig(filename="mev_bot.log", level=logging.INFO, format="%(asctime)s - %(message)s")
+logging.basicConfig(filename="mev_bot.log", level=logging.DEBUG, format="%(asctime)s - %(message)s")
+
+print("🚀 Starting MEV Bot...")  # Ensure we see this in GitHub logs
 
 # ✅ Load Environment Variables
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
@@ -21,31 +23,34 @@ w3 = {}
 for chain, rpc in RPC_URLS.items():
     if rpc:
         try:
+            print(f"🔍 Connecting to {chain} RPC: {rpc}")  # Debug line
             w3[chain] = Web3(Web3.HTTPProvider(rpc))
             if w3[chain].is_connected():
-                logging.info(f"✅ {chain} RPC connected successfully.")
+                print(f"✅ {chain} RPC connected successfully.")
             else:
-                logging.warning(f"⚠️ {chain} RPC failed to connect.")
+                print(f"⚠️ {chain} RPC failed to connect.")
                 del w3[chain]
         except Exception as e:
-            logging.error(f"❌ Error connecting to {chain} RPC: {e}")
+            print(f"❌ Error connecting to {chain} RPC: {e}")
             del w3[chain]
 
 if not w3:
-    logging.error("❌ CRITICAL ERROR: No working RPC connections. Exiting bot.")
+    print("❌ CRITICAL ERROR: No working RPC connections. Exiting bot.")
     exit(1)
 else:
-    logging.info("🚀 MEV Bot started successfully!")
+    print("🚀 MEV Bot started successfully!")
 
 # ✅ Fetch Mempool Transactions
 def fetch_mempool_data(chain):
     if chain not in w3:
-        logging.warning(f"Skipping {chain}, RPC is unavailable.")
+        print(f"Skipping {chain}, RPC is unavailable.")
         return None
 
     try:
+        print(f"🔍 Fetching mempool data for {chain}...")
         block = w3[chain].eth.get_block("pending", full_transactions=True)
         transactions = block.transactions
+        print(f"✅ Found {len(transactions)} transactions in mempool.")
         data = []
         for tx in transactions:
             data.append([
@@ -57,13 +62,13 @@ def fetch_mempool_data(chain):
             ])
         return np.array(data)
     except Exception as e:
-        logging.error(f"Error fetching mempool data for {chain}: {e}")
+        print(f"❌ Error fetching mempool data for {chain}: {e}")
         return None
 
 # ✅ Execute Trade (Final Fix)
 def execute_trade(chain, transaction):
     if chain not in w3:
-        logging.warning(f"Skipping {chain}, RPC is unavailable.")
+        print(f"Skipping {chain}, RPC is unavailable.")
         return
 
     try:
@@ -81,17 +86,21 @@ def execute_trade(chain, transaction):
             "chainId": w3[chain].eth.chain_id,
         }
 
+        print(f"🔍 Signing transaction on {chain}: {tx}")  # Debug line
+
         # ✅ Fix: Ensure Correct Attribute
         signed_tx = w3[chain].eth.account.sign_transaction(tx)
+        print(f"✅ Transaction signed: {signed_tx}")
+
         tx_hash = send_private_transaction(signed_tx.raw_transaction.hex())
 
         if tx_hash:
             etherscan_link = f"https://etherscan.io/tx/{tx_hash}"
-            logging.info(f"✅ Trade Executed on {chain}: {etherscan_link}")
+            print(f"✅ Trade Executed on {chain}: {etherscan_link}")
         else:
-            logging.error("❌ Gas-Free Trade Failed!")
+            print("❌ Gas-Free Trade Failed!")
     except Exception as e:
-        logging.error(f"❌ Trade Execution Failed: {e}")
+        print(f"❌ Trade Execution Failed: {e}")
 
 # ✅ Send transaction via Private Relay
 def send_private_transaction(signed_tx_hex):
@@ -104,10 +113,10 @@ def send_private_transaction(signed_tx_hex):
         if response.status_code == 200:
             return response.json().get("tx_hash")
         else:
-            logging.error(f"❌ Relay Error: {response.text}")
+            print(f"❌ Relay Error: {response.text}")
             return None
     except Exception as e:
-        logging.error(f"❌ Private Relay Failed: {e}")
+        print(f"❌ Private Relay Failed: {e}")
         return None
 
 # ✅ Start Bot
@@ -118,7 +127,7 @@ def start_trading():
             if transactions is not None:
                 for tx in transactions:
                     execute_trade(chain, tx)
-        logging.info("🔄 Bot completed a cycle, sleeping for 5 minutes.")
+        print("🔄 Bot completed a cycle, sleeping for 5 minutes.")
         time.sleep(300)
 
 if __name__ == "__main__":
