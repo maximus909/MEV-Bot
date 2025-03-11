@@ -93,35 +93,47 @@ def predict_trade(transaction_data):
         send_alert(f"❌ AI Prediction Failed: {e}")
         return False
 
-# ✅ Gas-Free MEV Execution Using Private Relay
+
+        # ✅ Gas-Free MEV Execution Using Private Relay
 def execute_trade(chain, transaction):
     if chain not in w3:
         send_alert(f"Skipping {chain}, RPC is unavailable.")
         return
 
     try:
-        value, gas_price, gas, max_fee, max_priority = transaction
+        # ✅ Fixing NumPy Data Type Issues (Convert np.int64 → int)
+        value = int(transaction[0])  # ETH/BSC/SOL value in Wei
+        gas_price = int(transaction[1])  
+        gas = int(transaction[2])  
+        max_fee = int(transaction[3])
+        max_priority = int(transaction[4])
+
+        # ✅ Prepare Transaction
         account = w3[chain].eth.account.from_key(PRIVATE_KEY)
         nonce = w3[chain].eth.get_transaction_count(account.address)
 
         tx = {
             "from": account.address,
-            "to": account.address,  # Replace with actual arbitrage contract
+            "to": account.address,  # Replace with real target
             "value": value,
-            "gas": 0,  # Gasless execution
-            "gasPrice": 0,  # Gas-free via private relay
+            "gas": 21000,  # Minimum gas limit for transfers
+            "gasPrice": 0,  # Gasless execution
             "nonce": nonce,
+            "chainId": w3[chain].eth.chain_id,
         }
 
+        # ✅ Correct Signing Process
         signed_tx = w3[chain].eth.account.sign_transaction(tx, PRIVATE_KEY)
-        tx_hash = send_private_transaction(signed_tx.rawTransaction)
+
+        # ✅ Correct Submission Process
+        tx_hash = send_private_transaction(signed_tx.rawTransaction.hex())
 
         if tx_hash:
-            etherscan_link = f"https://etherscan.io/tx/{tx_hash.hex()}"
+            etherscan_link = f"https://etherscan.io/tx/{tx_hash}"
             send_alert(f"""
             ✅ Gas-Free Trade Executed on {chain}:
             🔹 Value: {value / 10**18:.6f} ETH
-            🔹 Transaction Hash: {tx_hash.hex()}
+            🔹 Transaction Hash: {tx_hash}
             🔹 🔗 [View on Etherscan]({etherscan_link})
             """)
         else:
@@ -130,11 +142,11 @@ def execute_trade(chain, transaction):
         send_alert(f"❌ Trade Execution Failed: {e}")
 
 # ✅ Send transaction via Private MEV Relay
-def send_private_transaction(signed_tx):
+def send_private_transaction(signed_tx_hex):
     try:
         relay_url = "https://api.edennetwork.io/v1/bundle"  # Replace with working relay
         headers = {"Content-Type": "application/json"}
-        tx_data = {"tx": signed_tx.hex(), "mev": True}
+        tx_data = {"tx": signed_tx_hex, "mev": True}
         response = requests.post(relay_url, json=tx_data, headers=headers)
 
         if response.status_code == 200:
@@ -145,6 +157,7 @@ def send_private_transaction(signed_tx):
     except Exception as e:
         send_alert(f"❌ Private Relay Failed: {e}")
         return None
+
 
 # ✅ Main Trading Loop
 def start_trading():
