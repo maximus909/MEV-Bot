@@ -1,3 +1,6 @@
+# Creating a final clean version of the GitHub Actions YML file (removing mev_debug.log)
+
+final_yml = """\
 name: Run MEV Bot
 
 on:
@@ -32,4 +35,16 @@ jobs:
           ARBITRUM_RPC: ${{ secrets.ARBITRUM_RPC }}
         run: |
           set -o pipefail
-          python mev_bot.py 2>&1 | tee mev_debug.log || echo "❌ MEV Bot crashed. Check mev_debug.log for details."
+          echo "🚀 Starting MEV Bot..."
+          python mev_bot.py || echo "❌ MEV Bot crashed."
+
+      - name: Show Latest Alerts
+        run: |
+          if [ -f alerts.txt ]; then
+            echo "📢 Showing last 10 alerts from alerts.txt:"
+            tail -n 10 alerts.txt
+          else
+            echo "⚠️ No alerts found. The bot may not have started correctly."
+          fi
+"""
+
