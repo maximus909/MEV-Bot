@@ -1,6 +1,4 @@
-# Creating a clean, error-free version of mev_bot.py (Removing Telegram, Wallet Address, and Extra Features)
 
-clean_code = """\
 import os
 import json
 import time
@@ -17,12 +15,10 @@ logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctim
 def send_alert(message):
     with open("alerts.txt", "a") as f:
         f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\\n")
-    with open("mev_debug.log", "a") as f:
-        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {message}\\n")
     logging.info(message)
     print(message, flush=True)  # Force output to GitHub Actions logs
 
-# ✅ Load Environment Variables (No Wallet Address)
+# ✅ Load Environment Variables
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 RPC_URLS = {
     "ETH": os.getenv("ETH_RPC"),
@@ -99,7 +95,7 @@ def predict_trade(transaction_data):
         send_alert(f"❌ AI Prediction Failed: {e}")
         return False
 
-# ✅ Execute Trade if Profitable (No Wallet Address Required)
+# ✅ Execute Trade if Profitable
 def execute_trade(chain, transaction):
     if chain not in w3:
         send_alert(f"Skipping {chain}, RPC is unavailable.")
