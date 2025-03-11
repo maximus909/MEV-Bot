@@ -33,21 +33,3 @@ jobs:
         run: |
           set -o pipefail
           python mev_bot.py 2>&1 | tee mev_debug.log || echo "❌ MEV Bot crashed. Check mev_debug.log for details."
-
-      - name: Show Debug Log
-        run: |
-          if [ -f mev_debug.log ]; then
-            echo "📢 MEV Debug Log:"
-            cat mev_debug.log
-          else
-            echo "⚠️ No debug log found. The bot may have crashed before logging."
-          fi
-
-      - name: Show Latest Alerts
-        run: |
-          if [ -f alerts.txt ]; then
-            echo "📢 Showing last 10 alerts from alerts.txt:"
-            tail -n 10 alerts.txt
-          else
-            echo "⚠️ No alerts found. The bot may not have started correctly."
-          fi
