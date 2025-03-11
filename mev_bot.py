@@ -94,6 +94,7 @@ def predict_trade(transaction_data):
         return False
 
 
+       
         # ✅ Gas-Free MEV Execution Using Private Relay
 def execute_trade(chain, transaction):
     if chain not in w3:
@@ -101,7 +102,7 @@ def execute_trade(chain, transaction):
         return
 
     try:
-        # ✅ Fixing NumPy Data Type Issues (Convert np.int64 → int)
+        # ✅ Convert np.int64 to int to avoid errors
         value = int(transaction[0])  # ETH/BSC/SOL value in Wei
         gas_price = int(transaction[1])  
         gas = int(transaction[2])  
@@ -125,7 +126,7 @@ def execute_trade(chain, transaction):
         # ✅ Correct Signing Process
         signed_tx = w3[chain].eth.account.sign_transaction(tx, PRIVATE_KEY)
 
-        # ✅ Correct Submission Process
+        # ✅ Correct Submission Process (Fixing rawTransaction issue)
         tx_hash = send_private_transaction(signed_tx.rawTransaction.hex())
 
         if tx_hash:
@@ -157,7 +158,6 @@ def send_private_transaction(signed_tx_hex):
     except Exception as e:
         send_alert(f"❌ Private Relay Failed: {e}")
         return None
-
 
 # ✅ Main Trading Loop
 def start_trading():
