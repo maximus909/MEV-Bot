@@ -1,7 +1,6 @@
 import os
 import time
 import requests
-import json
 from web3 import Web3
 
 # ✅ Logging function
@@ -27,7 +26,6 @@ for chain, web3 in w3.items():
         log(f"❌ {chain} RPC failed to connect. Check RPC URL.")
         del w3[chain]
 
-# ✅ Ensure at least one chain is available
 if not w3:
     log("❌ No working RPCs. Exiting.")
     exit()
@@ -59,19 +57,14 @@ def execute_trade(chain, transaction):
         }
 
         log(f"🔍 Signing transaction on {chain}: {tx}")
-        
-        signed_tx = account.sign_transaction(tx)
-        tx_data = {"tx": signed_tx.rawTransaction.hex(), "mev": True}
 
-        # ✅ Send transaction to private MEV relay
-        response = requests.post(MEV_RELAY_URL, json=tx_data, headers={"Content-Type": "application/json"})
+        signed_tx = web3.eth.account.sign_transaction(tx, PRIVATE_KEY)
 
-        if response.status_code == 200:
-            tx_hash = response.json().get("tx_hash")
-            etherscan_link = f"https://etherscan.io/tx/{tx_hash}"
-            log(f"✅ Trade Executed on {chain}: {etherscan_link}")
-        else:
-            log(f"❌ Relay Error: {response.text}")
+        # ✅ Correct the error: Use `raw_transaction` instead of `rawTransaction`
+        tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
+
+        etherscan_link = f"https://etherscan.io/tx/{tx_hash.hex()}"
+        log(f"✅ Trade Executed on {chain}: {etherscan_link}")
 
     except Exception as e:
         log(f"❌ Trade Execution Failed: {e}")
@@ -82,7 +75,7 @@ def start_bot():
         for chain in list(w3.keys()):
             sample_transaction = [10**18, 2000000000]  # Dummy transaction for testing
             execute_trade(chain, sample_transaction)
-        
+
         log("🔄 Bot completed a cycle, sleeping for 5 minutes.")
         time.sleep(300)
 
