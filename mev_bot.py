@@ -90,8 +90,9 @@ def execute_trade(chain, transaction):
 
         # ✅ Fix: Correct way to sign transactions
         signed_tx = account.sign_transaction(tx)  
-        print(f"✅ Transaction signed: {signed_tx}")
+        print(f"✅ Transaction signed: {signed_tx.hash.hex()}")  # Correct log output
 
+        # ✅ Fix: Use `.hex()` to properly format transaction data
         tx_hash = send_private_transaction(signed_tx.rawTransaction.hex())
 
         if tx_hash:
@@ -101,6 +102,7 @@ def execute_trade(chain, transaction):
             print("❌ Gas-Free Trade Failed!")
     except Exception as e:
         print(f"❌ Trade Execution Failed: {e}")
+
 
             
 # ✅ Send transaction via Private Relay
