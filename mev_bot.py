@@ -1,12 +1,14 @@
 import os
 import json
 import time
+import requests
 import numpy as np
 import pandas as pd
 from web3 import Web3
 from sklearn.ensemble import RandomForestClassifier
 import logging
 import sys
+from eth_account.messages import encode_defunct
 
 # ✅ Setup Logging & Alerts
 logging.basicConfig(filename='mev_bot.log', level=logging.INFO, format='%(asctime)s - %(message)s')
@@ -17,16 +19,19 @@ def send_alert(message):
     logging.info(message)
     print(message, flush=True)  # Force output to GitHub Actions logs
 
-# ✅ Load Environment Variables (BSC Removed)
+# ✅ Load Environment Variables
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 RPC_URLS = {
     "ETH": os.getenv("ETH_RPC"),
-    "AVAX": os.getenv("AVAX_RPC"),
-    "SOL": os.getenv("SOL_RPC"),
     "ARBITRUM": os.getenv("ARBITRUM_RPC"),
 }
 
-# ✅ Remove BSC from Web3 Connections
+# ✅ Ensure Private Key Exists
+if not PRIVATE_KEY:
+    send_alert("❌ CRITICAL ERROR: PRIVATE_KEY is missing!")
+    sys.exit(1)
+
+# ✅ Initialize Web3 Connections
 w3 = {}
 for chain, rpc in RPC_URLS.items():
     if rpc:
@@ -47,8 +52,6 @@ if not w3:
     sys.exit(1)
 else:
     send_alert("🚀 MEV Bot started successfully!")
-
-             
 
 # ✅ AI Model for Predicting Profitable Trades
 try:
@@ -90,10 +93,6 @@ def predict_trade(transaction_data):
         send_alert(f"❌ AI Prediction Failed: {e}")
         return False
 
-
-
-           from eth_account.messages import encode_defunct
-
 # ✅ Gas-Free MEV Execution Using Private Relay
 def execute_trade(chain, transaction):
     if chain not in w3:
@@ -107,7 +106,7 @@ def execute_trade(chain, transaction):
 
         tx = {
             "from": account.address,
-            "to": account.address,  # Target contract or arbitrage address
+            "to": account.address,  # Replace with actual arbitrage contract
             "value": value,
             "gas": 0,  # Gasless execution
             "gasPrice": 0,  # Gas-free via private relay
@@ -147,11 +146,10 @@ def send_private_transaction(signed_tx):
         send_alert(f"❌ Private Relay Failed: {e}")
         return None
 
-
-# ✅ Continuous Trading with More Frequent Checks
+# ✅ Main Trading Loop
 def start_trading():
     while True:
-        trade_count = 0  # Track how many trades were executed
+        trade_count = 0  # Track executed trades
         
         for chain in list(w3.keys()):
             transactions = fetch_mempool_data(chain)
@@ -163,15 +161,14 @@ def start_trading():
 
         if trade_count == 0:
             send_alert("🔄 No profitable trades found. Checking again in 30 seconds.")
-            time.sleep(30)  # Check again sooner
+            time.sleep(30)  # Recheck sooner
         else:
             send_alert(f"✅ {trade_count} profitable trades executed. Sleeping for 5 minutes.")
             time.sleep(300)  # Normal sleep after successful trades
-
 
 if __name__ == "__main__":
     try:
         start_trading()
     except Exception as e:
         send_alert(f"❌ CRITICAL ERROR: {e}")
-        sys.exit(1)  # Stops bot if there’s a fatal error
+        sys.exit(1)
