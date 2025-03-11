@@ -44,5 +44,4 @@ jobs:
           else
             echo "⚠️ No alerts found. The bot may not have started correctly."
           fi
-"""
 
