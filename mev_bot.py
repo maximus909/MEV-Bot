@@ -65,8 +65,8 @@ def fetch_mempool_data(chain):
         print(f"❌ Error fetching mempool data for {chain}: {e}")
         return None
 
-# ✅ Execute Trade (Final Fix)
-def execute_trade(chain, transaction):
+
+      def execute_trade(chain, transaction):
     if chain not in w3:
         print(f"Skipping {chain}, RPC is unavailable.")
         return
@@ -86,20 +86,15 @@ def execute_trade(chain, transaction):
             "chainId": w3[chain].eth.chain_id,
         }
 
-        print(f"🔍 Signing transaction on {chain}: {tx}")  # Debug line
+        print(f"🔍 Signing transaction on {chain}: {tx}")
 
-        # ✅ Fix: Correct way to sign transactions
-        signed_tx = account.sign_transaction(tx)  
-        print(f"✅ Transaction signed: {signed_tx.hash.hex()}")  # Correct log output
+        # ✅ Fix: Correct Web3 signing method
+        signed_tx = account.sign_transaction(tx)
+        tx_hash = w3[chain].eth.send_raw_transaction(signed_tx.raw_transaction)
 
-        # ✅ Fix: Use `.hex()` to properly format transaction data
-        tx_hash = send_private_transaction(signed_tx.rawTransaction.hex())
+        etherscan_link = f"https://etherscan.io/tx/{tx_hash.hex()}"
+        print(f"✅ Trade Executed on {chain}: {etherscan_link}")
 
-        if tx_hash:
-            etherscan_link = f"https://etherscan.io/tx/{tx_hash}"
-            print(f"✅ Trade Executed on {chain}: {etherscan_link}")
-        else:
-            print("❌ Gas-Free Trade Failed!")
     except Exception as e:
         print(f"❌ Trade Execution Failed: {e}")
 
