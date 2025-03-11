@@ -88,11 +88,11 @@ def execute_trade(chain, transaction):
 
         print(f"🔍 Signing transaction on {chain}: {tx}")  # Debug line
 
-        # ✅ Fix: Ensure Correct Attribute
-        signed_tx = w3[chain].eth.account.sign_transaction(tx)
+        # ✅ Fix: Correct way to sign transactions
+        signed_tx = account.sign_transaction(tx)  
         print(f"✅ Transaction signed: {signed_tx}")
 
-        tx_hash = send_private_transaction(signed_tx.raw_transaction.hex())
+        tx_hash = send_private_transaction(signed_tx.rawTransaction.hex())
 
         if tx_hash:
             etherscan_link = f"https://etherscan.io/tx/{tx_hash}"
@@ -102,6 +102,7 @@ def execute_trade(chain, transaction):
     except Exception as e:
         print(f"❌ Trade Execution Failed: {e}")
 
+            
 # ✅ Send transaction via Private Relay
 def send_private_transaction(signed_tx_hex):
     try:
