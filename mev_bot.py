@@ -17,22 +17,16 @@ def send_alert(message):
     logging.info(message)
     print(message, flush=True)  # Force output to GitHub Actions logs
 
-# ✅ Load Environment Variables
+# ✅ Load Environment Variables (BSC Removed)
 PRIVATE_KEY = os.getenv("PRIVATE_KEY")
 RPC_URLS = {
     "ETH": os.getenv("ETH_RPC"),
-    "BSC": os.getenv("BSC_RPC"),
     "AVAX": os.getenv("AVAX_RPC"),
     "SOL": os.getenv("SOL_RPC"),
     "ARBITRUM": os.getenv("ARBITRUM_RPC"),
 }
 
-# ✅ Ensure Private Key Exists (Prevents Empty Transactions)
-if not PRIVATE_KEY:
-    send_alert("❌ CRITICAL ERROR: PRIVATE_KEY is missing!")
-    sys.exit(1)
-
-# ✅ Initialize Web3 Connections
+# ✅ Remove BSC from Web3 Connections
 w3 = {}
 for chain, rpc in RPC_URLS.items():
     if rpc:
@@ -53,6 +47,8 @@ if not w3:
     sys.exit(1)
 else:
     send_alert("🚀 MEV Bot started successfully!")
+
+             
 
 # ✅ AI Model for Predicting Profitable Trades
 try:
